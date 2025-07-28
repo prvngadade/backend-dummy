@@ -1,22 +1,27 @@
 trigger:
-  - main  # or your branch
+  - main  # or your desired branch
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
   imageName: 'backend-dummy'
-  buildDate: $[format('{0:yyyyMMdd-HHmmss}', pipeline.startTime)]
-  branchName: $[replace(variables['Build.SourceBranchName'], '/', '-')]
-  imageTag: '$(branchName)-$(Build.BuildId)-$(buildDate)'
+  branchName: $(Build.SourceBranchName)
 
 steps:
 - checkout: self
 
+- script: |
+    echo "Sanitizing branch name..."
+    cleanBranch=$(echo $(branchName) | sed 's/\//-/g')
+    echo "##vso[task.setvariable variable=cleanBranchName]$cleanBranch"
+    echo "##vso[task.setvariable variable=imageTag]$cleanBranch-$(Build.BuildId)-$(Date:yyyyMMdd)$(Rev:.r)"
+  displayName: Generate tag
+
 - task: Docker@2
   displayName: Build Docker image
   inputs:
-    containerRegistry: 'dw-acr-connection'
+    containerRegistry: 'dw-acr-connection'  # 👈 Replace with your actual ACR service connection name
     command: build
     repository: $(imageName)
     Dockerfile: '**/Dockerfile'
